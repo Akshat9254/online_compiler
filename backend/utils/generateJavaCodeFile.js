@@ -7,11 +7,11 @@ const generateCppCodeFile = (
   outputFilePath,
   directoryPath
 ) => {
-  const filename = "code.cpp";
+  const filename = "Main.java";
   const filePath = path.join(directoryPath, filename);
 
-  const ioCode = `\nfreopen($input, "r", stdin);
-    freopen($output, "w", stdout);`
+  const ioCode = `\nSystem.setIn(new FileInputStream(new File($input)));
+        System.setOut(new PrintStream(new File($output)));`
     .replace("$input", `"${inputFilePath}"`)
     .replace("$output", `"${outputFilePath}"`);
 

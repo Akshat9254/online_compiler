@@ -1,33 +1,35 @@
-const {
-  generateCppCodeFile,
-  generateInputFile,
-  generateOutputFile,
-} = require("../utils");
-const { runCpp } = require("../service");
-
-const fs = require("fs");
+const { v4: uuid } = require("uuid");
+const { addJobToQueue } = require("../service/queueService");
+const { redisClient } = require("../config/redis");
 
 module.exports = {
   submit: async (req, res) => {
-    const { input = "", code } = req.body;
-
-    const inputFilePath = generateInputFile(input);
-    const outputFilePath = generateOutputFile(inputFilePath);
-
-    const codeFilePath = generateCppCodeFile(
-      code,
-      inputFilePath,
-      outputFilePath
-    );
-
     try {
-      await runCpp(codeFilePath);
+      const { input = "", code, ext = "java" } = req.body;
+      const submissionId = uuid();
 
-      const output = fs.readFileSync(outputFilePath, "utf-8");
-
-      res.json({ output });
+      await addJobToQueue(submissionId, code, input, ext);
+      res.json({ submissionId });
     } catch (err) {
-      res.status(500).json({ err });
+      console.error(err);
+    }
+  },
+
+  status: async (req, res) => {
+    const { id: submissionId } = req.params;
+    if (!submissionId)
+      res.status(400).json({ message: "submissionId not found" });
+    try {
+      const result = await redisClient.get(submissionId);
+
+      if (result) {
+        redisClient.del(submissionId);
+        res.json({ status: "completed", result });
+      } else {
+        res.json({ status: "pending" });
+      }
+    } catch (err) {
+      console.error(err);
     }
   },
 };
